@@ -1,5 +1,13 @@
 # WGUPS Routing Program — C950 Project
 
+![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)
+![Nix](https://img.shields.io/badge/Nix flake-5277C3?logo=nixos&logoColor=white)
+![PyPy](https://img.shields.io/badge/PyPy-3.11-193440?logo=pypy&logoColor=white)
+![Ruff](https://img.shields.io/badge/Ruff-lint%20%26%20format-261230?logo=ruff&logoColor=white)
+![Typst](https://img.shields.io/badge/Typst-typeset-239dae?logo=typst&logoColor=white)
+
+> 🏆 Awarded the **WGU Excellence Award** for outstanding project quality and technical depth.
+
 A Python implementation of the Western Governors University Parcel Service routing system. It plans, optimizes, and simulates delivery routes for three trucks and forty packages in downtown Salt Lake City using a custom chaining hash table and a Clarke-Wright savings heuristic polished by 2-opt local search.
 
 ## Results
@@ -10,6 +18,13 @@ A Python implementation of the Western Governors University Parcel Service routi
 | Packages delivered | **40 / 40**                     |
 | Truck capacity     | 16 packages max                 |
 | Average speed      | 18 mph                          |
+
+## Documentation
+
+Two papers accompany this implementation, both authored in Typst:
+
+- **[Plan (Task 1)](docs/plan.pdf)** — Algorithm and data structure overview submitted before implementation. Describes the Clarke-Wright savings heuristic with 2-opt local search, the chaining hash table design, pseudocode, runtime analysis, and a scenario walkthrough.
+- **[Writeup (Task 2)](docs/writeup.pdf)** — Algorithm and data structure justification submitted after implementation. Justifies the chosen approach, verifies all scenario requirements are met, identifies alternative algorithms (Nearest Neighbor, Sweep) and data structures (BST, open-addressing hash table), and includes execution screenshots as evidence.
 
 ## Quick Start
 
@@ -23,7 +38,7 @@ just run
 # Or with PyPy
 just build && just run-compiled
 
-# Validate (lint, format, typecheck, compile)
+# Validate (lint, format, typecheck, test, compile)
 just validate
 ```
 
