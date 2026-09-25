@@ -12,12 +12,12 @@ A Python implementation of the Western Governors University Parcel Service routi
 
 ## Results
 
-| Metric             | Value                           |
-| ------------------ | ------------------------------- |
-| Total distance     | **103.8 miles** (target: < 140) |
-| Packages delivered | **40 / 40**                     |
-| Truck capacity     | 16 packages max                 |
-| Average speed      | 18 mph                          |
+| Metric             | Value                          |
+| ------------------ | ------------------------------ |
+| Total distance     | **89.3 miles** (target: < 140) |
+| Packages delivered | **40 / 40**                    |
+| Truck capacity     | 16 packages max                |
+| Average speed      | 18 mph                         |
 
 ## Documentation
 
