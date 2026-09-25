@@ -1,9 +1,9 @@
 # WGUPS Routing Program — C950 Project
 
-![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)
-![Nix](https://img.shields.io/badge/Nix flake-5277C3?logo=nixos&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)
+![Nix](https://img.shields.io/badge/Nix-5277C3?logo=nixos&logoColor=fff)
 ![PyPy](https://img.shields.io/badge/PyPy-3.11-193440?logo=pypy&logoColor=white)
-![Ruff](https://img.shields.io/badge/Ruff-lint%20%26%20format-261230?logo=ruff&logoColor=white)
+![Ruff](https://custom-icon-badges.demolab.com/badge/Ruff-261230.svg?logo=ruff-logo)
 ![Typst](https://img.shields.io/badge/Typst-typeset-239dae?logo=typst&logoColor=white)
 
 > 🏆 Awarded the **WGU Excellence Award** for outstanding project quality and technical depth.
