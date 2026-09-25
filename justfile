@@ -42,5 +42,9 @@ run-compiled:
     fi
     PYTHONPATH=src pypy3 "$pyc"
 
-# Run all validation steps (lint, format check, typecheck, build)
-validate: check typecheck build
+# Run unit tests for hash table and distance table
+test:
+    python3 -m unittest discover -s tests -v
+
+# Run all validation steps (lint, format check, typecheck, test, build)
+validate: check typecheck test build

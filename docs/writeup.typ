@@ -97,7 +97,7 @@ An *open-addressing hash table* stores every record directly in the bucket array
 
 The program is implemented in Python 3.12 and executed through the interpreter detected at build time (PyPy preferred for its JIT compiler, with CPython as a fallback).  The development environment is defined in a Nix flake (`flake.nix`) that provides a reproducible shell containing Python 3.12, PyPy3, `ruff`, `pyright`, `just`, and `git`.  Build tasks are orchestrated through a `justfile`.  Source code is formatted and linted with `ruff` and type-checked with `pyright`.
 
-Testing is currently manual — screenshots and interactive CLI queries serve as the primary verification — but lightweight unit tests for the custom hash table (`insert`, `lookup`, `remove`, resizing) and the distance table would be a worthwhile addition.  They would catch regressions in the two data structures built from scratch without adding significant overhead to the project.
+Automated unit tests cover the two data structures built from scratch.  `tests/test_hash_table.py` verifies insertion, lookup, key overwrite, collision chaining, automatic resizing, and load-factor maintenance.  `tests/test_distance_table.py` verifies symmetric distance lookups, zero diagonal entries, and graceful error handling for unknown addresses.  All tests are run with `just test` or `just validate`.
 
 The main execution flow proceeds in seven stages:
 
