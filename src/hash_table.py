@@ -1,13 +1,13 @@
 """
 Custom chaining hash table implemented from scratch using only built-in
-Python data structures (lists). No dict, no external libraries.
+Python data structures (lists).
 
 Process:
   Keys (package_id integers) are hashed into bucket indices with modulo
-  arithmetic.  Collisions are resolved by chaining: each bucket holds a
-  list of (key, value) tuples.  When the load factor exceeds 0.75 the
-  table automatically doubles in size and rehashes all entries — a
-  self-adjusting heuristic that keeps average lookup time O(1).
+  arithmetic. Collisions are resolved by chaining: each bucket holds a
+  list of (key, value) tuples. When the load factor exceeds 0.75 the
+  table automatically doubles in size and rehashes all entries. This
+  keeps average lookup time O(1).
 
 Flow:
   insert(package_id, package) -> _hash -> find bucket -> append or replace

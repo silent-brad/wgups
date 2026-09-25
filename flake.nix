@@ -1,5 +1,5 @@
 {
-  description = "WGUPS Routing Program — C950 Task 2";
+  description = "WGUPS Routing Program";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 

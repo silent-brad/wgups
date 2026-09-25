@@ -17,27 +17,33 @@
 
 = Introduction
 
-The Western Governors University Parcel Service (WGUPS) routes an average of forty packages per day through Salt Lake City using three trucks, two drivers, and a hub located at 4001 South 700 East.  Each package carries specific constraints — delivery deadlines, truck assignments, delayed flight arrivals, and a wrong address that is corrected mid-morning — that make manual routing inefficient and error-prone.  The program described here automates the entire routing process.  It loads package data into a custom chaining hash table, builds optimized delivery routes for each truck using a Clarke-Wright savings heuristic polished by 2-opt local search, simulates the trucks' movement, and presents an intuitive command-line interface for supervisors to query any package status at any time of day.
+The Western Governors University Parcel Service (WGUPS) routes an average of forty packages per day through Salt Lake City using three trucks, two drivers, and a hub located at 4001 South 700 East.  Each package carries specific constraints — delivery deadlines, truck assignments, delayed flight arrivals, grouped deliveries, and a wrong address that is corrected mid-morning — that make manual routing inefficient and error-prone.  The program described here automates the entire routing process.  It loads package data into a custom chaining hash table, builds optimized delivery routes for each truck using a Clarke-Wright savings heuristic polished by 2-opt local search, simulates the trucks' movement, and presents an intuitive command-line interface for supervisors to query any package status at any time of day.
 
-The implementation delivers all forty packages, respects every hard constraint, and keeps the combined total distance under the 140-mile requirement at 103.8 miles.  This paper explains why the Clarke-Wright / 2-opt combination was chosen, how the custom hash table satisfies the storage and lookup requirements, what alternative algorithms and data structures could also meet the scenario's needs, and what modifications would be made on a second iteration.
+The implementation delivers all forty packages, respects every hard constraint, verifies deadlines through explicit route simulation, and keeps the combined total distance under the 140-mile requirement at 89.3 miles.  This paper explains why the deadline-aware Clarke-Wright / 2-opt combination was chosen, how the custom hash table satisfies the storage and lookup requirements, what alternative algorithms and data structures could also meet the scenario's needs, and what modifications would be made on a second iteration.
 
-Throughout the discussion, the Salt Lake City downtown map (see below) provides the geographic context for every routing decision.  The annotated map shows the hub and all delivery locations, confirming that the distance table used by the program accurately reflects the street network.
-
-#image("slc_downtown_map.png")
+#image("slc_downtown_map.png", width: 60%)
 
 = Algorithm Design and Justification
 
 == Overview of the Chosen Approach
 
-The routing engine is built around a two-phase algorithm.  Phase one constructs feasible routes using the *Clarke-Wright savings algorithm*, a self-adjusting heuristic that starts with every package as an independent round-trip from the hub and greedily merges the pair whose combined route saves the most mileage ("Vehicle routing problem," n.d.).  Phase two polishes those routes with *2-opt local search*, which repeatedly examines pairs of edges in a route; if reconnecting them the other way shortens the distance, the segment between them is reversed ("2-opt," n.d.).  This construction-plus-improvement workflow was selected because it naturally handles multiple trucks, enforces capacity limits, and produces high-quality routes in polynomial time.
+The routing engine is a three-phase pipeline.
+
+*Phase one* assigns every package to a truck.  Hard constraints — "Can only be on truck 2," "Delayed on flight," "Must be delivered with," and the wrong-address flag for package #9 — are parsed dynamically from each package's `special_notes` field rather than hard-coded.  The remaining packages are inserted greedily: packages with 9:00 a.m. deadlines are forced onto Truck 1 (the only truck departing early enough), 10:30 a.m. deadlines are routed to Trucks 1 or 2, and EOD packages are placed on whichever truck causes the smallest increase in closed-loop route cost.
+
+*Phase two* simulates each constructed route to verify that every package is delivered before its deadline.  If a package would be late, it is moved to an earlier-departing truck and an EOD package is swapped back to keep capacity balanced.  After all deadlines are satisfied, an EOD-only local search tries moving or swapping unconstrained EOD packages between trucks to reduce total mileage without breaking any deadline.
+
+*Phase three* builds the actual route for each truck using the *Clarke-Wright savings algorithm*, a self-adjusting heuristic that starts with every delivery address as an independent round-trip from the hub and greedily merges the pair whose combined route saves the most mileage ("Vehicle routing problem," n.d.).  After construction, *2-opt local search* polishes each route by repeatedly examining pairs of edges; if reconnecting them the other way shortens the distance, the segment between them is reversed ("2-opt," n.d.).
+
+This design was selected because it separates feasibility (deadlines and hard constraints) from optimization (mileage), making it easy to verify that requirements are met before the route is ever driven.
 
 == Strengths of the Algorithm
 
-Two properties in particular make the Clarke-Wright / 2-opt pairing well-suited to the WGUPS scenario.
+Two properties make this pipeline well-suited to the WGUPS scenario.
 
-First, the savings construction is *self-adjusting*.  After each merge, the pool of valid merges shrinks.  A pair that was a strong candidate before may now create a cycle or place more than sixteen packages on a single truck, disqualifying it.  The algorithm dynamically adapts to this shrinking search space without re-evaluating every pair from scratch, which keeps the overall run time practical — on commodity hardware the forty-package construction finishes in well under one second.
+First, the deadline-first assignment with explicit route simulation guarantees correctness before optimization.  Because the program builds a candidate route, simulates driving it, and checks every delivery time against the package's deadline, there is no risk that a low-mileage route will inadvertently violate a time constraint.  If a violation is found, the package is automatically reassigned to an earlier truck.  This is a significant advantage over pure construction heuristics that optimize distance without looking at clock time.
 
-Second, the two-phase design cleanly separates responsibility.  Clarke-Wright decides *which* packages travel together and *in what order* they are visited, while 2-opt removes local inefficiencies (edge crossings) without changing the truck assignments.  This modularity makes the code easier to maintain: a developer who wants to swap out the polisher for Or-opt or Lin-Kernighan need only modify a single function, leaving the savings constructor untouched.
+Second, the Clarke-Wright savings construction is *self-adjusting*.  After each merge, the pool of valid merges shrinks: a pair that was a strong candidate before may now exceed the sixteen-package capacity limit or would force a non-endpoint address into the middle of a route, disqualifying it.  The algorithm dynamically adapts to this shrinking search space without re-evaluating every pair from scratch, which keeps the overall run time practical — on commodity hardware the forty-package construction finishes in well under one second.
 
 == Verification Against Scenario Requirements
 
@@ -45,23 +51,21 @@ The combined algorithm satisfies every requirement described in the scenario.
 
 *All forty packages are delivered.*  The route planner assigns every package to exactly one truck, and the delivery simulator drives each truck to every stop in its optimized order.  No package is orphaned or delivered twice.
 
-*Total distance stays under 140 miles.*  The combined mileage for all three trucks is 103.8 miles, a 26-percent margin below the threshold.
+*Total distance stays under 140 miles.*  The combined mileage for all three trucks is 89.3 miles, a 36-percent margin below the threshold.
 
-*Capacity limits are enforced.*  The merge logic rejects any combination that would place more than sixteen packages on a single truck.
+*Capacity limits are enforced.*  The greedy insertion refuses any truck that already carries sixteen packages, and the Clarke-Wright merge logic rejects any combination that would exceed the same limit.
 
-*Hard constraints are respected.*  Packages that are restricted to Truck 2 (IDs 3, 18, 36, 38) are pre-filtered into Truck 2's pool before construction begins.  Packages delayed by a late flight are marked "delayed" until 9:05 a.m.; Truck 2 leaves at 9:05 a.m. so those packages are not delivered early.  Packages that must be delivered together (for example, "Must be delivered with 15, 19") are collected into a single pool and placed on the same truck.
-
-*The wrong-address requirement is handled.*  Package #9 loads with the original incorrect address "300 State St." and is marked "delayed."  At 10:20 a.m., the address is corrected to "410 S State St." in the hash table, Truck 3's route is rebuilt with the corrected stop using the same Clarke-Wright savings construction, and Truck 3 departs at 10:30 a.m.  This models the real-world situation in which the correct address is unavailable until mid-morning.
+*Hard constraints are respected.*  The program scans every package's `special_notes` field at runtime to discover constraints.  Packages restricted to Truck 2 are pre-filtered into Truck 2's load.  Flight-delayed packages are marked "delayed" until 9:05 a.m.; Truck 2 leaves at 9:05 a.m. so those packages are not delivered early.  Packages that must be delivered together are collected into a single pool and placed on the same truck.  Package #9 loads with the original incorrect address "300 State St." and is marked "delayed."  At 10:20 a.m., the address is corrected to "410 S State St." in the hash table, Truck 3's route is rebuilt with the corrected stop using the same savings construction, and Truck 3 departs at 10:30 a.m.
 
 *The two-driver limit is respected.*  Trucks 1 and 2 depart at 8:00 a.m.  Truck 3 departs at 10:30 a.m., after the first truck has returned to the hub and freed a driver.
 
-*Deadlines are met.*  All packages with "9:00 AM" deadlines (ID 15) and "10:30 AM" deadlines are delivered before their cutoff times.
+*Deadlines are met.*  All packages with "9:00 AM" deadlines and "10:30 AM" deadlines are delivered before their cutoff times, verified by explicit route simulation.
 
 == Alternative Algorithms That Could Also Satisfy the Requirements
 
 Any algorithm that respects capacity limits and produces routes under 140 miles would satisfy the scenario.  Two other named approaches that meet these criteria are the *Nearest-Neighbor heuristic* and the *Sweep algorithm* ("Vehicle routing problem," n.d.).
 
-*Nearest Neighbor* differs from Clarke-Wright in construction strategy.  Rather than evaluating every package pair globally, it starts at the hub and repeatedly visits the closest unvisited stop until the truck is full, then returns to the hub and repeats.  This is a greedy local strategy: each decision depends only on the current location's immediate vicinity.  In contrast, Clarke-Wright is a global strategy that evaluates all pairs before committing to any merge.  Nearest Neighbor tends to produce longer routes because an early greedy choice can strand a distant package on a late leg, and it lacks the self-adjusting merge logic of Clarke-Wright; once a package is added to a route it is never reconsidered.
+*Nearest Neighbor* differs from Clarke-Wright in construction strategy.  Rather than evaluating every address pair globally, it starts at the hub and repeatedly visits the closest unvisited stop until the truck is full, then returns to the hub and repeats.  This is a greedy local strategy: each decision depends only on the current location's immediate vicinity.  In contrast, Clarke-Wright is a global strategy that evaluates all pairs before committing to any merge.  Nearest Neighbor tends to produce longer routes because an early greedy choice can strand a distant package on a late leg, and it lacks the self-adjusting merge logic of Clarke-Wright; once a package is added to a route it is never reconsidered.
 
 *Sweep* differs in how trucks are partitioned.  It places the hub at the origin of a polar coordinate system, sorts every delivery address by angle from the hub, and assigns contiguous angular slices to each truck.  Each slice is then routed internally.  Sweep is fundamentally a geometric partitioner that exploits spatial clustering, whereas Clarke-Wright is a distance-based merger that ignores angular geometry and instead optimizes for raw mileage reduction.  Sweep would produce radial wedge-shaped routes rather than the chain-like routes Clarke-Wright creates, and it may underperform when constraints force non-geographic groupings (for example, "truck 2 only" packages located at opposite ends of the delivery area).
 
@@ -91,17 +95,19 @@ An *open-addressing hash table* stores every record directly in the bucket array
 
 = Implementation Details and Testing
 
-The program is implemented in Python 3.12 and executed on PyPy for just-in-time compilation performance.  The development environment is managed with Nix flakes, and build tasks are orchestrated through a `justfile`.  Source code is formatted and linted with `ruff`, type-checked with `pyright`, and compiled with PyPy before execution.
+The program is implemented in Python 3.12 and executed through the interpreter detected at build time (PyPy preferred for its JIT compiler, with CPython as a fallback).  The development environment is defined in a Nix flake (`flake.nix`) that provides a reproducible shell containing Python 3.12, PyPy3, `ruff`, `pyright`, `just`, and `git`.  Build tasks are orchestrated through a `justfile`.  Source code is formatted and linted with `ruff` and type-checked with `pyright`.
+
+Testing is currently manual — screenshots and interactive CLI queries serve as the primary verification — but lightweight unit tests for the custom hash table (`insert`, `lookup`, `remove`, resizing) and the distance table would be a worthwhile addition.  They would catch regressions in the two data structures built from scratch without adding significant overhead to the project.
 
 The main execution flow proceeds in seven stages:
 
 1. Load the distance table CSV into a `DistanceTable` object that provides $O(1)$ distance lookups by address pair.
 2. Load the package CSV into `Package` objects, applying an initial status of `"at hub"` to most packages and `"delayed"` to those affected by the late flight or the wrong address.
 3. Insert every `Package` into the custom `HashTable` keyed by `package_id`.
-4. Plan routes by pre-filtering packages into constraint pools and running the Clarke-Wright savings construction followed by 2-opt for each truck.
-5. Set departure times: Truck 1 and Truck 2 at 8:00 a.m. (Truck 2 delayed to 9:05 a.m. if carrying late-arrival packages); Truck 3 at 10:30 a.m.
+4. Plan routes by parsing `special_notes` for constraints, assigning packages with deadline-first greedy insertion, simulating routes to repair missed deadlines, and running an EOD-only local search to lower mileage.
+5. Set departure times: Truck 1 at 8:00 a.m., Truck 2 at 8:00 a.m. (delayed to 9:05 a.m. if carrying late-arrival packages), Truck 3 at 10:30 a.m.
 6. Correct package #9's address at 10:20 a.m., rebuild Truck 3's route with the corrected stop, and run the delivery simulation.
-7. Enter the interactive CLI, where the supervisor types a time (for example, `"8:40 AM"`) and sees every package's current status, truck assignment, and deadline.
+7. Enter the interactive CLI, where the supervisor types a time (for example, `"8:35 AM"`) and sees every package's current status, truck assignment, and deadline.  Colours indicate status: green for delivered, yellow for en route, red for delayed, and blue for at hub.
 
 == Screenshots Required for Evidence
 
@@ -109,31 +115,39 @@ The following four screenshots must be captured from the running program and sub
 
 === Status Check at 8:35 a.m. — 9:25 a.m.
 
-Run the program and enter `8:40 AM` at the prompt.  The output will show all forty packages on their assigned trucks.  The evaluator should observe packages 6, 9, 25, 28, and 32 in `"delayed"` status; packages 14, 15, 16, 29, and 34 already delivered; Truck 1 and Truck 2 packages en route; and Truck 3 packages still at the hub because that truck has not yet departed.
+Run the program and enter `8:35 AM` at the prompt.  The output will show all forty packages on their assigned trucks.  The evaluator should observe packages 6, 9, 25, 28, and 32 in `"delayed"` status; packages 2, 7, 14, 15, 16, 29, 33, and 34 already delivered; Truck 1 and Truck 2 packages en route; and Truck 3 packages still at the hub because that truck has not yet departed.
+
+#image("screenshots/status-835am.png", width: 70%)
 
 === Status Check at 9:35 a.m. — 10:25 a.m.
 
-Run the program and enter `10:00 AM`.  The evaluator should observe package 9 still `"delayed"` because its address is not corrected until 10:20 a.m.; packages 25, 6, 28, and 32 now `"en route"` or already delivered (Truck 2 departed at 9:05 a.m.); and Truck 3 packages `"at hub"` pending the 10:30 a.m. departure.
+Run the program and enter `9:10 AM`.  The evaluator should observe package 9 still `"delayed"` because its address is not corrected until 10:20 a.m.; packages 6, 25, 28, and 32 now `"en route"` or already delivered (Truck 2 departed at 9:05 a.m.); and Truck 3 packages `"at hub"` pending the 10:30 a.m. departure.
+
+#image("screenshots/status-935am.png", width: 70%)
 
 === Status Check at 12:03 p.m. — 1:12 p.m.
 
-Run the program and enter `12:30 PM`.  All forty packages should show `"delivered at <time>"` with no pending deliveries.  Truck 3's packages, including the last deliveries at 12:00 p.m. and 12:10 p.m., confirm that the day ends only when every package has been served.
+Run the program and enter `12:30 PM`.  All forty packages should show `"delivered at <time>"` with no pending deliveries.  Truck 3's last deliveries occur around 11:10 a.m.–11:46 a.m., confirming that the day ends only when every package has been served.
+
+#image("screenshots/status-1203pm.png", width: 70%)
 
 === Total Mileage
 
-Run the program and enter `all` at the prompt.  The output header reads `Total mileage for all trucks: 103.8 miles`, which is below the 140-mile requirement.  Every package also shows its final delivered status and timestamp.
+Run the program and enter `all` at the prompt.  The output header reads `Total mileage for all trucks: 89.3 miles`, which is below the 140-mile requirement.  Every package also shows its final delivered status, truck assignment, and timestamp.
+
+#image("screenshots/status-total-mileage.png", width: 70%)
 
 = Future Modifications
 
 If this project were done again, two modifications would improve robustness and maintainability.
 
-First, the timing constraints would be handled by a dedicated *time-window layer* inside the route planner rather than by hard-coded departure-time switches in the main script.  Currently, Truck 2's departure is set to 9:05 a.m. with an explicit conditional, and package #9's address correction triggers a manual route rebuild.  A time-window layer would model every package's availability as an interval `[earliest_depart, latest_arrive]` and feed those bounds directly into the savings merge step.  The merge function would reject combining a package with a 9:00 a.m. deadline onto a route whose projected arrival exceeds 9:00 a.m., even if the merge saves miles.  This would automate deadline compliance and eliminate the risk of manual assignment errors.  The change would affect `build_routes` and `_build_route_for_truck`, adding an arrival-time projection before each merge decision.
+First, the deadline-repair logic would be moved into the greedy assignment phase itself.  Currently, the program assigns all packages first and then simulates routes to find violations, moving late packages afterward.  A more integrated approach would simulate the route *before* committing each new package to a truck, rejecting any insertion that would cause a missed deadline.  This would reduce the need for a separate repair loop and would produce better mileage because EOD packages would be placed with full knowledge of which deadline-sensitive packages are already locked in.
 
-Second, the static truck-to-package assignment would be replaced by an *iterative wave dispatcher*.  Currently, packages are assigned to trucks in a single pass at 8:00 a.m.  A wave dispatcher would re-evaluate the unassigned pool whenever a truck returns to the hub, then dispatch the next truck with the most time-sensitive remaining packages.  This would automatically balance mileage across trucks when one route finishes early or late, and it would allow trucks to return for secondary loads without manual intervention.
+Second, the EOD-only local search would be expanded into a full simulated-annealing search that also considers moving 10:30-deadline packages between Trucks 1 and 2.  Currently, the local search only moves EOD packages because deadline packages are anchored by their time constraints.  However, a 10:30 package on Truck 2 might actually arrive earlier if moved to Truck 1, freeing space on Truck 2 for an EOD package that is currently on Truck 3.  A temperature-based search would temporarily accept deadline-package moves that increase cost if they enable later cost-saving EOD swaps, escaping local minima that the current greedy search cannot.
 
 = Conclusion
 
-The WGUPS Routing Program demonstrates that a self-adjusting heuristic combined with a custom hash table can solve a real-world vehicle-routing problem efficiently, correctly, and within tight constraints.  The Clarke-Wright savings algorithm and 2-opt local search deliver all forty packages in 103.8 miles — well under the 140-mile ceiling — while honoring every truck restriction, deadline, and mid-flight address correction.  The chaining hash table provides constant-time package lookup and dynamic resizing, ensuring that the supervisor can monitor any package at any time without performance degradation.  Alternative algorithms such as Nearest Neighbor and Sweep could also achieve the mileage target, but they differ in construction philosophy and would produce measurably different route shapes.  Similarly, binary search trees and open-addressing hash tables could store the package data, but neither matches the chaining hash table's combination of speed, simplicity, and graceful degradation under load.  Future iterations should incorporate an embedded time-window layer and an iterative dispatcher to make the constraint-handling more robust as the scenario scales.
+The WGUPS Routing Program demonstrates that a self-adjusting heuristic combined with a custom hash table can solve a real-world vehicle-routing problem efficiently, correctly, and within tight constraints.  The deadline-aware assignment pipeline, Clarke-Wright savings algorithm, and 2-opt local search deliver all forty packages in 89.3 miles — well under the 140-mile ceiling — while honoring every truck restriction, deadline, and mid-flight address correction.  The chaining hash table provides constant-time package lookup and dynamic resizing, ensuring that the supervisor can monitor any package at any time without performance degradation.  Alternative algorithms such as Nearest Neighbor and Sweep could also achieve the mileage target, but they differ in construction philosophy and would produce measurably different route shapes.  Similarly, binary search trees and open-addressing hash tables could store the package data, but neither matches the chaining hash table's combination of speed, simplicity, and graceful degradation under load.  Future iterations should integrate deadline simulation directly into the greedy assignment and expand the local search to consider time-sensitive package moves for further mileage reduction.
 
 = References
 

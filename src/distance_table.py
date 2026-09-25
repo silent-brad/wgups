@@ -23,20 +23,21 @@ class DistanceTable:
     def __init__(self, addresses, matrix):
         self.addresses = addresses
         self.distance_table = matrix
-        self.address_to_index = {}
-        for idx, addr in enumerate(addresses):
-            self.address_to_index[addr] = (idx, idx)
+
+    def _index(self, address):
+        """Return the row/column index for *address*."""
+        return self.addresses.index(address)
 
     def get_distance(self, address_a, address_b):
         """Return the miles between *address_a* and *address_b*."""
-        row_index_a, _ = self.address_to_index[address_a]
-        _, col_index_b = self.address_to_index[address_b]
+        row_index_a = self._index(address_a)
+        col_index_b = self._index(address_b)
         return self.distance_table[row_index_a][col_index_b]
 
     def get_hub_distance(self, address):
         """Return the miles from the hub to *address*."""
-        row_index, col_index = self.address_to_index[address]
-        return self.distance_table[row_index][col_index]
+        idx = self._index(address)
+        return self.distance_table[idx][idx]
 
     def __repr__(self):
         return f"DistanceTable({len(self.addresses)} addresses)"

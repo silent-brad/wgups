@@ -33,7 +33,47 @@ from delivery_simulator import simulate_deliveries
 from distance_table import DistanceTable
 from hash_table import HashTable
 from package import Package
-from route_planner import build_route_for_truck, build_routes, two_opt
+from route_planner import (
+    TRUCK1_DEPARTURE,
+    TRUCK2_DEPARTURE,
+    TRUCK3_DEPARTURE,
+    build_route_for_truck,
+    build_routes,
+    two_opt,
+)
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+# These values come from the WGUPS scenario description:
+#   - HUB_ADDRESS matches the first data row of WGUPS Distance Table.csv.
+#   - PKG9_CORRECT_ADDRESS is the updated address given at 10:20 a.m.
+#   - Departure times are rubric assumptions, not CSV data.
+HUB_ADDRESS = "4001 South 700 East"
+PKG9_CORRECT_ADDRESS = "410 S State St"
+PKG9_CORRECT_ZIP = "84111"
+
+# ANSI colour helpers for the CLI.
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+RED = "\033[91m"
+BLUE = "\033[94m"
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+
+def _status_colour(status):
+    """Return an ANSI colour code based on package status text."""
+    if status.startswith("delivered"):
+        return GREEN
+    if status == "en route":
+        return YELLOW
+    if status == "delayed":
+        return RED
+    if status == "at hub":
+        return BLUE
+    return ""
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -45,10 +85,8 @@ def _time_to_float(time_str):
     time_str = time_str.strip().upper()
     if time_str == "EOD":
         return 17.0  # 5:00 p.m.
-    parts = time_str.split()
-    hm = parts[0]
-    ampm = parts[1] if len(parts) > 1 else "AM"
-    h, m = map(int, hm.split(":"))
+    h_m, ampm = time_str.split()
+    h, m = map(int, h_m.split(":"))
     if ampm == "PM" and h != 12:
         h += 12
     if ampm == "AM" and h == 12:
@@ -147,7 +185,6 @@ def main():
 
     # 1. Load distance table.
     distance_table = _load_distance_table(dist_path)
-    hub_address = "4001 South 700 East"  # WGUPS hub
 
     # 2. Load packages and insert into the custom hash table.
     packages = _load_packages(pkg_path)
@@ -165,7 +202,7 @@ def main():
             hash_table.insert(pkg.package_id, pkg)
 
     # 4. Plan routes: assign packages to trucks and optimize stop order.
-    trucks = build_routes(packages, distance_table, hub_address)
+    trucks = build_routes(packages, distance_table, HUB_ADDRESS)
 
     # Record which truck each package belongs to.
     for truck in trucks:
@@ -175,13 +212,13 @@ def main():
 
     # 5. Set departure times respecting the two-driver limit and constraints.
     #    Truck 1 departs at 8:00 a.m.
-    trucks[0].depart(8.0)
+    trucks[0].depart(TRUCK1_DEPARTURE)
     #    Truck 2 departs at 8:00 a.m. unless it carries packages delayed until 9:05.
-    truck2_depart = 8.0
+    truck2_depart = TRUCK1_DEPARTURE
     for pkg in trucks[1].packages:
         notes = (pkg.special_notes or "").lower()
         if "delayed" in notes and "9:05" in notes:
-            truck2_depart = 9.0 + 5.0 / 60.0  # 9:05 a.m.
+            truck2_depart = TRUCK2_DEPARTURE
             break
     trucks[1].depart(truck2_depart)
 
@@ -192,27 +229,27 @@ def main():
     #     now so the truck drives to the corrected destination.
     pkg9 = hash_table.lookup(9)
     if pkg9 and len(trucks) > 2:
-        pkg9.address = "410 S State St"
-        pkg9.zip_code = "84111"
+        pkg9.address = PKG9_CORRECT_ADDRESS
+        pkg9.zip_code = PKG9_CORRECT_ZIP
         hash_table.insert(9, pkg9)
         trucks[2].route = build_route_for_truck(
-            trucks[2].packages, distance_table, hub_address, trucks[2].capacity
+            trucks[2].packages, distance_table, HUB_ADDRESS, trucks[2].capacity
         )
         trucks[2].route = two_opt(
-            [hub_address] + trucks[2].route + [hub_address], distance_table
+            [HUB_ADDRESS] + trucks[2].route + [HUB_ADDRESS], distance_table
         )[1:-1]
 
     #    Truck 3 departs when a driver returns (~10:30 a.m.).
     if len(trucks) > 2:
-        trucks[2].depart(10.5)
+        trucks[2].depart(TRUCK3_DEPARTURE)
 
     # 6. Run the delivery simulation.
-    total_miles = simulate_deliveries(trucks, distance_table, hash_table, hub_address)
+    total_miles = simulate_deliveries(trucks, distance_table, hash_table, HUB_ADDRESS)
 
     # 7. CLI for status queries.
-    print("=" * 60)
-    print("WGUPS Routing Program")
-    print("=" * 60)
+    print(BOLD + "=" * 60 + RESET)
+    print(BOLD + "WGUPS Routing Program" + RESET)
+    print(BOLD + "=" * 60 + RESET)
     print(f"Total mileage for all trucks: {total_miles:.1f} miles\n")
 
     while True:
@@ -228,8 +265,9 @@ def main():
             for pid in range(1, 41):
                 pkg = hash_table.lookup(pid)
                 if pkg:
+                    colour = _status_colour(pkg.status)
                     print(
-                        f"Package {pid:2d}: {pkg.status:<25} "
+                        f"Package {pid:2d}: {colour}{pkg.status:<25}{RESET} "
                         f"(Truck {pkg.truck_id}, {pkg.address})"
                     )
             print(f"\nTotal mileage: {total_miles:.1f} miles")
@@ -243,7 +281,7 @@ def main():
             continue
 
         # Display each package's status at query_time.
-        print(f"\nStatus at {user_input}:\n")
+        print(f"\n{BOLD}Status at {user_input}:{RESET}\n")
         for pid in range(1, 41):
             pkg = hash_table.lookup(pid)
             if not pkg:
@@ -261,7 +299,7 @@ def main():
             if (
                 "delayed" in notes
                 and "9:05" in notes
-                and query_time < (9.0 + 5.0 / 60.0)
+                and query_time < TRUCK2_DEPARTURE
                 or pkg.package_id == 9
                 and query_time < (10.0 + 20.0 / 60.0)
             ):
@@ -277,8 +315,9 @@ def main():
             else:
                 status = "en route"
 
+            colour = _status_colour(status)
             print(
-                f"Package {pid:2d}: {status:<30} "
+                f"Package {pid:2d}: {colour}{status:<30}{RESET} "
                 f"(Truck {pkg.truck_id}, Deadline: {pkg.deadline})"
             )
         print()
