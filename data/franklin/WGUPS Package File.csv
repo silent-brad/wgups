@@ -1,0 +1,41 @@
+package_id,address,city,state,zip,deadline,weight,special_notes
+1,1400 Liberty Pike,Franklin,TN,37067,10:30:00,21,
+2,3000 Mallory Ln,Franklin,TN,37067,EOD,44,
+3,430 Cool Springs Blvd,Franklin,TN,37067,EOD,2,"Can only be on truck 2"
+4,1982 W McEwen Dr,Franklin,TN,37067,EOD,4,
+5,2000 Mallory Ln,Franklin,TN,37067,EOD,5,
+6,9000 Church St E,Brentwood,TN,37027,10:30:00,25,"Delayed on flight---will not arrive to depot until 9:05 am"
+7,1110 Hillsboro Rd,Franklin,TN,37064,EOD,7,
+8,330 Franklin Rd,Brentwood,TN,37027,EOD,9,
+9,1982 W McEwen Dr,Franklin,TN,37067,EOD,2,Wrong address listed
+10,430 Cool Springs Blvd,Franklin,TN,37067,EOD,1,
+11,430 Cool Springs Blvd,Franklin,TN,37067,EOD,1,
+12,100 International Dr,Franklin,TN,37067,EOD,1,
+13,6816 Nolensville Rd,Brentwood,TN,37027,10:30:00,2,"Must be delivered with 15, 19"
+14,595 Hillsboro Rd,Franklin,TN,37064,10:30:00,88,
+15,1001 Lawson White Dr,Franklin,TN,37064,9:00:00,7,"Must be delivered with 13, 19"
+16,1550 W McEwen Dr,Franklin,TN,37067,10:30:00,2,"Must be delivered with 13, 15"
+17,1020 Del Rio Pike,Franklin,TN,37069,EOD,2,
+18,430 Cool Springs Blvd,Franklin,TN,37067,EOD,4,
+19,1020 Del Rio Pike,Franklin,TN,37069,EOD,4,"Must be delivered with 13, 15"
+20,1550 W McEwen Dr,Franklin,TN,37067,10:30:00,21,
+21,1875 West McEwen Drive,Franklin,TN,37067,EOD,7,
+22,1875 West McEwen Drive,Franklin,TN,37067,EOD,7,
+23,8115 Moores Ln,Brentwood,TN,37027,EOD,7,
+24,1010 Little Barn Rd,Nashville,TN,37221,EOD,2,
+25,1140 Columbia Ave,Franklin,TN,37064,10:30:00,7,"Delayed on flight---will not arrive to depot until 9:05 am"
+26,1140 Columbia Ave,Franklin,TN,37064,EOD,25,
+27,1875 West McEwen Drive,Franklin,TN,37067,EOD,7,
+28,1096 Murfreesboro Rd,Franklin,TN,37064,EOD,7,
+29,1110 Hillsboro Rd,Franklin,TN,37064,10:30:00,2,
+30,1010 Murfreesboro Rd,Franklin,TN,37064,10:30:00,1,
+31,1654 W McEwen Dr,Franklin,TN,37067,10:30:00,1,
+32,3000 Mallory Ln,Franklin,TN,37067,EOD,1,"Delayed on flight---will not arrive to depot until 9:05 am"
+33,3000 Mallory Ln,Franklin,TN,37067,EOD,1,
+34,1201 Liberty Pike,Franklin,TN,37067,10:30:00,2,
+35,330 Franklin Rd,Brentwood,TN,37027,EOD,3,
+36,211 Franklin Rd,Franklin,TN,37064,EOD,2,
+37,1010 Murfreesboro Rd,Franklin,TN,37064,10:30:00,2,
+38,201 Jordan Rd,Franklin,TN,37067,EOD,9,
+39,100 International Dr,Franklin,TN,37067,EOD,9,
+40,8115 Moores Ln,Brentwood,TN,37027,10:30:00,10,

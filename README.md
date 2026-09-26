@@ -29,21 +29,69 @@ Two papers accompany this implementation, both authored in Typst:
 ## Quick Start
 
 ```bash
-# Enter the dev shell (Nix flake)
+# Enter the dev shell (Nix flake) — provides pypy3, ruff, pyright, just
 nix develop --extra-experimental-features "nix-command flakes"
 
-# Run the program
+# Run the program with default Salt Lake City data
 just run
 
-# Or with PyPy
-just build && just run-compiled
+# Run with a different city dataset
+just run --data-dir data/franklin/
 
-# Validate (lint, format, typecheck, test, compile)
+# Validate (lint, format, typecheck, test, build)
 just validate
+```
+
+## Adding a New City
+
+The program is fully city-agnostic. To add a new delivery area, create a data directory with three files and point the program at it with `--data-dir <path>`.
+
+### 1. Create the data directory
+
+```
+data/<city>/
+  addresses.txt      # one address per line; first line is the hub
+  coords.json        # address -> [lat, lon] mapping
+  WGUPS Package File.csv
+  config.json        # optional: wrong-address correction scenario
+```
+
+The sample **Franklin, TN** dataset (`data/franklin/`) can be used as a template.
+
+### 2. Generate the distance table
+
+**Option A — OpenRouteService API (accurate driving distances)**
+
+```bash
+export ORS_API_KEY=<your_key>
+python3 scripts/generate_distances.py \
+    --addresses data/<city>/addresses.txt \
+    --coords data/<city>/coords.json \
+    --output "data/<city>/WGUPS Distance Table.csv"
+```
+
+**Option B — Haversine approximation (no API key)**
+
+```bash
+python3 scripts/generate_distances.py \
+    --addresses data/<city>/addresses.txt \
+    --coords data/<city>/coords.json \
+    --approximate \
+    --output "data/<city>/WGUPS Distance Table.csv"
+```
+
+The generator produces a symmetric distance matrix in the exact WGUPS CSV format the routing program expects. The `--coords` file is required for both modes because the ORS Matrix API needs lat/lon coordinates.
+
+### 3. Run the program
+
+```bash
+just run --data-dir data/<city>/
 ```
 
 ## Key Features
 
+- **City-agnostic** — hub address is read from the distance table, and the wrong-address correction is read from `config.json`. Switching cities only requires a new data directory.
+- **Distance-table generator** — `scripts/generate_distances.py` builds a WGUPS-style CSV from a list of addresses using either the OpenRouteService Matrix API (accurate driving distances, one API call for the whole matrix) or a Haversine approximation (no API key needed).
 - **Custom hash table** — list-based chaining with dynamic resizing; no `dict` or third-party libraries.
 - **Self-adjusting heuristic** — Clarke-Wright savings construction dynamically shrinks the merge pool after each combination.
 - **2-opt local search** — removes edge crossings in each truck route after construction.
