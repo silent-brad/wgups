@@ -24,7 +24,6 @@
             pkgs.pyright
             pkgs.ruff
             pkgs.just
-            pkgs.git
           ];
           shellHook = ''
             echo "WGUPS Routing Program dev shell ready"
