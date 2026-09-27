@@ -35,6 +35,10 @@ class Package:
         Which truck is carrying this package.
     delivery_time : float | None
         Hour-fraction when the package was delivered (e.g. 10.5 for 10:30).
+    original_address : str | None
+        The original (incorrect) address before correction, if applicable.
+    original_zip_code : str | None
+        The original ZIP code before correction, if applicable.
     """
 
     def __init__(
@@ -62,6 +66,8 @@ class Package:
         self.special_notes = special_notes
         self.truck_id = truck_id
         self.delivery_time = delivery_time
+        self.original_address = None
+        self.original_zip_code = None
 
     def __repr__(self):
         return (
@@ -69,5 +75,6 @@ class Package:
             f"city={self.city}, state={self.state}, zip_code={self.zip_code}, "
             f"deadline={self.deadline}, weight={self.weight}, "
             f"status={self.status}, special_notes={self.special_notes}, "
-            f"truck_id={self.truck_id}, delivery_time={self.delivery_time})"
+            f"truck_id={self.truck_id}, delivery_time={self.delivery_time}, "
+            f"original_address={self.original_address})"
         )

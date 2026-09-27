@@ -1,4 +1,4 @@
-# Student ID: bwhi880
+# Student ID: 012009094
 """WGUPS Routing Program
 
 This program loads package and distance data, constructs a custom chaining
@@ -46,7 +46,7 @@ from route_planner import (
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-# ANSI colour helpers for the CLI.
+# ANSI color helpers for the CLI.
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
 RED = "\033[91m"
@@ -55,8 +55,8 @@ BOLD = "\033[1m"
 RESET = "\033[0m"
 
 
-def _status_colour(status):
-    """Return an ANSI colour code based on package status text."""
+def _status_color(status):
+    """Return an ANSI color code based on package status text."""
     if status.startswith("delivered"):
         return GREEN
     if status == "en route":
@@ -229,7 +229,7 @@ def _print_status_table(
             print(
                 f"\n{BOLD}Truck {truck.truck_id}{RESET}  {len(pkgs)} packages  ({status})"
             )
-        print("-" * 70)
+        print("-" * 90)
 
         # Print each package in this truck.
         for pkg in sorted(pkgs, key=lambda p: p.package_id):
@@ -252,7 +252,7 @@ def _print_status_table(
                 else:
                     status = "en route"
 
-            colour = _status_colour(status)
+            color = _status_color(status)
             # Canonicalize status for the summary count.
             if status.startswith("delivered"):
                 summary_key = "delivered"
@@ -260,22 +260,33 @@ def _print_status_table(
                 summary_key = status
             overall[summary_key] = overall.get(summary_key, 0) + 1
             deadline = pkg.deadline or "EOD"
+            # Before 10:20 a.m. the wrong-address package still shows
+            # the original (incorrect) address; afterwards the corrected one.
+            if (
+                pkg.package_id == wrong_pkg_id
+                and pkg.original_address is not None
+                and query_time is not None
+                and query_time < (10.0 + 20.0 / 60.0)
+            ):
+                display_address = pkg.original_address
+            else:
+                display_address = pkg.address
             print(
                 f"  Package {pkg.package_id:2d}  "
-                f"{colour}{status:<25}{RESET}  "
+                f"{color}{status:<25}{RESET}  "
                 f"Deadline: {deadline:<12}  "
-                f"{pkg.address}"
+                f"{display_address}"
             )
 
     if unassigned:
         print(f"\n{BOLD}Unassigned{RESET}")
-        print("-" * 70)
+        print("-" * 90)
         for pkg in sorted(unassigned, key=lambda p: p.package_id):
             print(f"  Package {pkg.package_id:2d}  (not assigned to any truck)")
 
     # Overall summary.
     print(f"\n{BOLD}Summary{RESET}")
-    print("-" * 70)
+    print("-" * 90)
     for label, count in overall.items():
         if count:
             print(f"  {label}: {count}")
@@ -374,6 +385,10 @@ def main():
     #     now so the truck drives to the corrected destination.
     wrong_pkg = hash_table.lookup(wrong_pkg_id)
     if wrong_pkg and corrected_address and len(trucks) > 2:
+        # Preserve the original address so it can be displayed for
+        # status queries made before the 10:20 a.m. correction.
+        wrong_pkg.original_address = wrong_pkg.address
+        wrong_pkg.original_zip_code = wrong_pkg.zip_code
         wrong_pkg.address = corrected_address
         wrong_pkg.zip_code = corrected_zip
         hash_table.insert(wrong_pkg_id, wrong_pkg)
